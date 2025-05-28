@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electronic Digital Signature</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1abc9c;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .input-section, .file-section, .result-section {
+            background-color: white;
+            color: black;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .input-section {
+            width: 250px;
+        }
+        .file-section, .result-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        button {
+            background-color: #1abc9c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #1abc9c;
+        }
+        .menu {
+            background-color: white;
+            color: black;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .menu a {
+            color: black;
+            text-decoration: none;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .menu a:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            color: white;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+<h1>Electronic Digital Signature</h1>
+
+<div class="menu">
+    <a href="#" id="openFile">Open File</a>
+    <input type="file" id="fileInput" style="display: none;">
+</div>
+
+<div class="container">
+    <div class="input-section">
+        <label for="qTextBox">q</label>
+        <input type="text" id="qTextBox" value="107">
+
+        <label for="pTextBox">p</label>
+        <input type="text" id="pTextBox" value="643">
+
+        <label for="hTextBox">h</label>
+        <input type="text" id="hTextBox" value="2">
+
+        <label for="xTextBox">x</label>
+        <input type="text" id="xTextBox" value="45">
+
+        <label for="kTextBox">k</label>
+        <input type="text" id="kTextBox" value="31">
+
+        <button id="signButton">Sign</button>
+        <button id="checkButton">Verify</button>
+    </div>
+
+    <div class="file-section">
+        <label>File Content:</label>
+        <textarea id="fileTextBox" readonly></textarea>
+    </div>
+
+    <div class="result-section">
+        <label>Result:</label>
+        <textarea id="resultTextBox" readonly></textarea>
+    </div>
+</div>
+
+<script>
+    const h0 = 100;
+
+    function isPrime(n) {
+        if (n <= 1n) return false;
+        if (n <= 3n) return true;
+        if (n % 2n === 0n) return false;
+        
+        let d = n - 1n;
+        let s = 0n;
+        while (d % 2n === 0n) {
+            d /= 2n;
+            s++;
+        }
+
+        const k = 20;
+        for (let i = 0; i < k; i++) {
+            const a = BigInt(Math.floor(Math.random() * (Number(n) - 2)) + 2);
+            let x = fastPow(a, d, n);
+            if (x === 1n || x === n - 1n) continue;
+
+            let found = false;
+            for (let j = 0n; j < s - 1n; j++) {
+                x = (x * x) % n;
+                if (x === 1n) return false;
+                if (x === n - 1n) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
+
+    function fastPow(a, z, n) {
+        let x = 1n;
+        a = BigInt(a) % BigInt(n);
+        z = BigInt(z);
+        n = BigInt(n);
+
+        while (z > 0n) {
+            if (z % 2n === 1n) {
+                x = (x * a) % n;
+            }
+            a = (a * a) % n;
+            z = z / 2n;
+        }
+        return x;
+    }
+
+    function hashFunc(h, m, q) {
+        return fastPow(h + BigInt(m), 2n, q);
+    }
+
+    function getHash(data, q) {
+        let h = BigInt(h0);
+        for (let i = 0; i < data.length; i++) {
+            h = hashFunc(h, data[i], q);
+        }
+        return h;
+    }
+
+    function getSignature(data, q, p, x, k, g) {
+        const h = getHash(data, q);
+        const r = fastPow(g, k, p) % q;
+        const s = (fastPow(k, q - 2n, q) * (h + x * r)) % q;
+
+        return { h, r, s };
+    }
+
+    const openFileLink = document.getElementById('openFile');
+    const fileInput = document.getElementById('fileInput');
+    const qTextBox = document.getElementById('qTextBox');
+    const pTextBox = document.getElementById('pTextBox');
+    const hTextBox = document.getElementById('hTextBox');
+    const xTextBox = document.getElementById('xTextBox');
+    const kTextBox = document.getElementById('kTextBox');
+    const fileTextBox = document.getElementById('fileTextBox');
+    const resultTextBox = document.getElementById('resultTextBox');
+    const signButton = document.getElementById('signButton');
+    const checkButton = document.getElementById('checkButton');
+
+    let fileName = '';
+    let fileText = '';
+    let fileBytes = [];
+
+    openFileLink.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        fileName = file.name;
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const arrayBuffer = event.target.result;
+            fileBytes = new Uint8Array(arrayBuffer);
+            fileText = new TextDecoder().decode(fileBytes);
+            fileTextBox.value = fileText.replace(/\0/g, ' ');
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+
+    signButton.addEventListener('click', () => {
+        if (!isCorrectInput()) return;
+
+        const { q, p, x, k, g, y } = getParameters();
+        const { h, r, s } = getSignature(fileBytes, q, p, x, k, g);
+
+        if (r === 0n) {
+            alert('Choose different k, because r = 0');
+            return;
+        }
+
+        if (s === 0n) {
+            alert('Choose different k, because s = 0');
+            return;
+        }
+
+        const signedContent = fileText + ` ${r} ${s}`;
+        fileTextBox.value = signedContent.replace(/\0/g, ' ');
+
+        const blob = new Blob([signedContent], { type: 'text/plain' });
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = fileName ? `signed_${fileName}` : 'signed_document.txt';
+
+        downloadLink.click();
+
+        URL.revokeObjectURL(downloadLink.href);
+
+        resultTextBox.value = `h = ${h}\nr = ${r}\ns = ${s}\ng = ${g}\ny = ${y}`;
+    });
+
+
+    checkButton.addEventListener('click', () => {
+        if (!isCorrectInput()) return;
+
+        const { q, p, g, y } = getParameters();
+
+        const currentText = fileTextBox.value;
+        const parts = currentText.trim().split(/\s+/);
+        if (parts.length < 2) {
+            alert('Файл не содержит подписи');
+            return;
+        }
+
+        try {
+            const sStr = parts.pop();
+            const rStr = parts.pop();
+            const originalText = parts.join(' ');
+
+            const r = BigInt(rStr);
+            const s = BigInt(sStr);
+
+            const data = new TextEncoder().encode(originalText);
+            const h = getHash(data, q);
+
+            const w = fastPow(s, q - 2n, q);
+            const u1 = (h * w) % q;
+            const u2 = (r * w) % q;
+            const v = (fastPow(g, u1, p) * fastPow(y, u2, p)) % p % q;
+
+            resultTextBox.value = `h = ${h}\nr = ${r}\ns = ${s}\ng = ${g}\ny = ${y}\n\nw = ${w}\nu1 = ${u1}\nu2 = ${u2}\nv = ${v}`;
+
+            alert(v === r ? "Подпись подлинна" : "Подпись не подлинна");
+        } catch (e) {
+            alert('Ошибка при проверке подписи: ' + e.message);
+        }
+    });
+
+    function getParameters() {
+        const q = BigInt(qTextBox.value);
+        const p = BigInt(pTextBox.value);
+        const h = BigInt(hTextBox.value);
+        const x = BigInt(xTextBox.value);
+        const k = BigInt(kTextBox.value);
+        const g = fastPow(h, (p - 1n) / q, p);
+        const y = fastPow(g, x, p);
+
+        return { q, p, h, x, k, g, y };
+    }
+
+    function isCorrectInput() {
+        if (!fileText) {
+            alert('Please open a file first.');
+            return false;
+        }
+
+        let q, p, h, x, k;
+
+        try {
+            q = BigInt(qTextBox.value);
+            if (!isPrime(q)) {
+                alert('q must be a prime number.');
+                return false;
+            }
+
+            p = BigInt(pTextBox.value);
+            if (!isPrime(p)) {
+                alert('p must be a prime number.');
+                return false;
+            }
+
+            if ((p - 1n) % q !== 0n) {
+                alert('q must be a divisor of (p - 1).');
+                return false;
+            }
+
+            h = BigInt(hTextBox.value);
+            if (h <= 1n || h >= p - 1n) {
+                alert('h must be in range (1; p - 1).');
+                return false;
+            }
+
+            const g = fastPow(h, (p - 1n) / q, p);
+            if (g <= 1n) {
+                alert('g = h^((p - 1) / q) mod p must be greater than 1.');
+                return false;
+            }
+
+            x = BigInt(xTextBox.value);
+            if (x <= 0n || x >= q) {
+                alert('x must be in range (0; q).');
+                return false;
+            }
+
+            k = BigInt(kTextBox.value);
+            if (k <= 0n || k >= q) {
+                alert('k must be in range (0; q).');
+                return false;
+            }
+        } catch (e) {
+            alert('Invalid input values.');
+            return false;
+        }
+
+        return true;
+    }
+</script>
+</body>
+</html>
